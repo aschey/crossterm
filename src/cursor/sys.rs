@@ -3,6 +3,8 @@
 #[cfg(unix)]
 #[cfg(feature = "events")]
 pub use self::unix::position;
+#[cfg(all(target_arch = "wasm32", feature = "events"))]
+pub use self::wasm::position;
 #[cfg(windows)]
 #[cfg(feature = "events")]
 pub use self::windows::position;
@@ -18,3 +20,6 @@ pub(crate) mod windows;
 #[cfg(unix)]
 #[cfg(feature = "events")]
 pub(crate) mod unix;
+
+#[cfg(all(target_arch = "wasm32", feature = "events"))]
+pub(crate) mod wasm;

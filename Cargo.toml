@@ -1,5 +1,5 @@
 [package]
-name = "crossterm"
+name = "crossterm-wasm"
 version = "0.27.0"
 authors = ["T. Post"]
 description = "A crossplatform terminal library for manipulating terminals."
@@ -14,8 +14,9 @@ rust-version = "1.58.0"
 categories = ["command-line-interface", "command-line-utilities"]
 
 [lib]
-name = "crossterm"
+name = "crossterm_wasm"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 #
 # Build documentation with all features -> EventStream is available
@@ -55,6 +56,9 @@ parking_lot = "0.12"
 # optional deps only added when requested
 futures-core = { version = "0.3", optional = true, default-features = false }
 serde = { version = "1.0", features = ["derive"], optional = true }
+futures = "0.3"
+wasm-bindgen = "0.2.87"
+
 
 #
 # Windows dependencies
@@ -66,6 +70,10 @@ optional = true
 
 [target.'cfg(windows)'.dependencies]
 crossterm_winapi = { version = "0.9.1", optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+xterm-js-rs = "0.1.2"
+web-sys = "0.3.64"
 
 #
 # UNIX dependencies

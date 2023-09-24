@@ -6,22 +6,22 @@ pub(crate) trait Filter: Send + Sync + 'static {
     fn eval(&self, event: &InternalEvent) -> bool;
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, target_arch = "wasm32"))]
 #[derive(Debug, Clone)]
 pub(crate) struct CursorPositionFilter;
 
-#[cfg(unix)]
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl Filter for CursorPositionFilter {
     fn eval(&self, event: &InternalEvent) -> bool {
         matches!(*event, InternalEvent::CursorPosition(_, _))
     }
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, target_arch = "wasm32"))]
 #[derive(Debug, Clone)]
 pub(crate) struct KeyboardEnhancementFlagsFilter;
 
-#[cfg(unix)]
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl Filter for KeyboardEnhancementFlagsFilter {
     fn eval(&self, event: &InternalEvent) -> bool {
         // This filter checks for either a KeyboardEnhancementFlags response or
@@ -35,11 +35,11 @@ impl Filter for KeyboardEnhancementFlagsFilter {
     }
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, target_arch = "wasm32"))]
 #[derive(Debug, Clone)]
 pub(crate) struct PrimaryDeviceAttributesFilter;
 
-#[cfg(unix)]
+#[cfg(any(unix, target_arch = "wasm32"))]
 impl Filter for PrimaryDeviceAttributesFilter {
     fn eval(&self, event: &InternalEvent) -> bool {
         matches!(*event, InternalEvent::PrimaryDeviceAttributes)
@@ -50,7 +50,7 @@ impl Filter for PrimaryDeviceAttributesFilter {
 pub(crate) struct EventFilter;
 
 impl Filter for EventFilter {
-    #[cfg(unix)]
+    #[cfg(any(unix, target_arch = "wasm32"))]
     fn eval(&self, event: &InternalEvent) -> bool {
         matches!(*event, InternalEvent::Event(_))
     }
