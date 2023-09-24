@@ -30,6 +30,7 @@ static SUPPORTS_ANSI_ESCAPE_CODES: AtomicBool = AtomicBool::new(false);
 static INITIALIZER: Once = Once::new();
 
 /// Checks if the current terminal supports ANSI escape sequences
+#[cfg(not(target_arch = "wasm32"))]
 pub fn supports_ansi() -> bool {
     INITIALIZER.call_once(|| {
         // Some terminals on Windows like GitBash can't use WinAPI calls directly
@@ -43,4 +44,9 @@ pub fn supports_ansi() -> bool {
     });
 
     SUPPORTS_ANSI_ESCAPE_CODES.load(Ordering::SeqCst)
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn supports_ansi() -> bool {
+    true
 }
