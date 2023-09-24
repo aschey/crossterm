@@ -1,4 +1,4 @@
-#[cfg(feature = "event-stream")]
+#[cfg(all(unix, feature = "event-stream"))]
 pub(crate) mod waker;
 
 #[cfg(feature = "events")]
