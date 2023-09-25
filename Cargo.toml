@@ -1,5 +1,5 @@
 [package]
-name = "crossterm-wasm"
+name = "crossterm"
 version = "0.27.0"
 authors = ["T. Post"]
 description = "A crossplatform terminal library for manipulating terminals."
@@ -14,7 +14,7 @@ rust-version = "1.58.0"
 categories = ["command-line-interface", "command-line-utilities"]
 
 [lib]
-name = "crossterm_wasm"
+name = "crossterm"
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
@@ -71,9 +71,6 @@ optional = true
 [target.'cfg(windows)'.dependencies]
 crossterm_winapi = { version = "0.9.1", optional = true }
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-xterm-js-rs = "0.1.2"
-web-sys = "0.3.64"
 
 #
 # UNIX dependencies
