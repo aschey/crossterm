@@ -131,8 +131,6 @@ pub(crate) mod wasm_stream;
 
 #[cfg(all(feature = "event-stream", not(target_arch = "wasm32")))]
 pub use stream::EventStream;
-#[cfg(all(feature = "event-stream", target_arch = "wasm32"))]
-pub use wasm_stream::EventStream;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::event::{

@@ -67,7 +67,6 @@ optional = true
 
 [target.'cfg(windows)'.dependencies]
 crossterm_winapi = { version = "0.9.1", optional = true }
-
 #
 # UNIX dependencies
 #
