@@ -101,9 +101,6 @@ pub(crate) mod sys;
 #[cfg(feature = "events")]
 pub use sys::supports_keyboard_enhancement;
 
-#[cfg(target_arch = "wasm32")]
-pub use sys::{init_terminal, TerminalHandle};
-
 /// Tells whether the raw mode is enabled.
 ///
 /// Please have a look at the [raw mode](./index.html#raw-mode) section.
