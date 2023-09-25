@@ -126,8 +126,6 @@ pub(crate) mod stream;
 pub(crate) mod sys;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod timeout;
-#[cfg(all(feature = "event-stream", target_arch = "wasm32"))]
-pub(crate) mod wasm_stream;
 
 #[cfg(all(feature = "event-stream", not(target_arch = "wasm32")))]
 pub use stream::EventStream;
