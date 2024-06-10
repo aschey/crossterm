@@ -27,7 +27,16 @@ fn enable_vt_processing() -> std::io::Result<()> {
 }
 
 static SUPPORTS_ANSI_ESCAPE_CODES: AtomicBool = AtomicBool::new(false);
+static FORCE_ANSI: AtomicBool = AtomicBool::new(false);
 static INITIALIZER: Once = Once::new();
+
+pub fn force_ansi(force: bool) {
+    FORCE_ANSI.store(force, Ordering::SeqCst);
+}
+
+pub(crate) fn is_ansi_forced() -> bool {
+    FORCE_ANSI.load(Ordering::SeqCst)
+}
 
 /// Checks if the current terminal supports ANSI escape sequences
 #[cfg(not(target_arch = "wasm32"))]
