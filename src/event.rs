@@ -351,7 +351,7 @@ impl Command for EnableMouseCapture {
 
     #[cfg(windows)]
     fn is_ansi_code_supported(&self) -> bool {
-        false
+        crate::ansi_support::is_ansi_forced()
     }
 }
 
@@ -380,7 +380,7 @@ impl Command for DisableMouseCapture {
 
     #[cfg(windows)]
     fn is_ansi_code_supported(&self) -> bool {
-        false
+        crate::ansi_support::is_ansi_forced()
     }
 }
 
@@ -519,7 +519,7 @@ impl Command for PushKeyboardEnhancementFlags {
 
     #[cfg(windows)]
     fn is_ansi_code_supported(&self) -> bool {
-        false
+        crate::ansi_support::is_ansi_forced()
     }
 }
 
@@ -548,7 +548,7 @@ impl Command for PopKeyboardEnhancementFlags {
 
     #[cfg(windows)]
     fn is_ansi_code_supported(&self) -> bool {
-        false
+        crate::ansi_support::is_ansi_forced()
     }
 }
 
