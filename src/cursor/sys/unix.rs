@@ -34,7 +34,7 @@ fn read_position() -> io::Result<(u16, u16)> {
 
 fn read_position_raw() -> io::Result<(u16, u16)> {
     // Use `ESC [ 6 n` to and retrieve the cursor position.
-    let stdout = tty_fd().unwrap();
+    let stdout = tty_fd()?;
     stdout.write(b"\x1B[6n")?;
 
     loop {
