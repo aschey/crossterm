@@ -64,6 +64,22 @@ impl FileDesc<'_> {
         }
     }
 
+    pub fn write(&self, buffer: &[u8]) -> io::Result<usize> {
+        let result = unsafe {
+            libc::write(
+                self.fd,
+                buffer.as_ptr() as *const libc::c_void,
+                buffer.len() as size_t,
+            )
+        };
+
+        if result < 0 {
+            Err(io::Error::last_os_error())
+        } else {
+            Ok(result as usize)
+        }
+    }
+
     /// Returns the underlying file descriptor.
     pub fn raw_fd(&self) -> RawFd {
         self.fd
@@ -78,6 +94,15 @@ impl FileDesc<'_> {
             FileDesc::Borrowed(fd) => fd.as_fd(),
         };
         let result = rustix::io::read(fd, buffer)?;
+        Ok(result)
+    }
+
+    pub fn write(&self, buffer: &[u8]) -> io::Result<usize> {
+        let fd = match self {
+            FileDesc::Owned(fd) => fd.as_fd(),
+            FileDesc::Borrowed(fd) => fd.as_fd(),
+        };
+        let result = rustix::io::write(fd, buffer)?;
         Ok(result)
     }
 
