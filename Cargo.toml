@@ -78,6 +78,7 @@ rustix = { version = "0.38.34", default-features = false, features = [
     "std",
     "stdio",
     "termios",
+    "process",
 ] }
 signal-hook = { version = "0.3.17", optional = true }
 filedescriptor = { version = "0.8", optional = true }
