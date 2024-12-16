@@ -190,7 +190,7 @@ fn read_supports_keyboard_enhancement_raw() -> io::Result<bool> {
         poll_internal, read_internal, InternalEvent,
     };
     use std::time::Duration;
-    use std::{io::Write, time::Instant};
+    use std::time::Instant;
 
     // This is the recommended method for testing support for the keyboard enhancement protocol.
     // We send a query for the flags supported by the terminal and then the primary device attributes
