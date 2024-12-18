@@ -7,6 +7,12 @@ pub use self::unix::supports_keyboard_enhancement;
 pub(crate) use self::unix::{
     disable_raw_mode, enable_raw_mode, is_raw_mode_enabled, size, window_size,
 };
+
+#[cfg(target_arch = "wasm32")]
+pub use wasm::supports_keyboard_enhancement;
+#[cfg(target_arch = "wasm32")]
+pub(crate) use wasm::{disable_raw_mode, enable_raw_mode, is_raw_mode_enabled, size, window_size};
+
 #[cfg(windows)]
 #[cfg(feature = "events")]
 pub use self::windows::supports_keyboard_enhancement;
@@ -25,3 +31,5 @@ mod windows;
 pub mod file_descriptor;
 #[cfg(unix)]
 mod unix;
+#[cfg(target_arch = "wasm32")]
+mod wasm;

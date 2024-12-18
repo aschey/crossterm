@@ -1,6 +1,6 @@
 use std::{io, time::Duration};
 
-#[cfg(feature = "event-stream")]
+#[cfg(all(feature = "event-stream", not(target_arch = "wasm32")))]
 use super::sys::Waker;
 use super::InternalEvent;
 
@@ -22,6 +22,6 @@ pub(crate) trait EventSource: Sync + Send {
     fn try_read(&mut self, timeout: Option<Duration>) -> io::Result<Option<InternalEvent>>;
 
     /// Returns a `Waker` allowing to wake/force the `try_read` method to return `Ok(None)`.
-    #[cfg(feature = "event-stream")]
+    #[cfg(all(feature = "event-stream", not(target_arch = "wasm32")))]
     fn waker(&self) -> Waker;
 }

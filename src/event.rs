@@ -121,22 +121,26 @@
 pub(crate) mod filter;
 pub(crate) mod read;
 pub(crate) mod source;
-#[cfg(feature = "event-stream")]
+#[cfg(all(feature = "event-stream", not(target_arch = "wasm32")))]
 pub(crate) mod stream;
 pub(crate) mod sys;
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod timeout;
 
-#[cfg(feature = "event-stream")]
+#[cfg(all(feature = "event-stream", not(target_arch = "wasm32")))]
 pub use stream::EventStream;
 
+#[cfg(not(target_arch = "wasm32"))]
 use crate::event::{
     filter::{EventFilter, Filter},
     read::InternalEventReader,
     timeout::PollTimeout,
 };
 use crate::{csi, Command};
+#[cfg(not(target_arch = "wasm32"))]
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use std::fmt::{self, Display};
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 
 use bitflags::bitflags;
@@ -144,13 +148,17 @@ use std::hash::{Hash, Hasher};
 
 /// Static instance of `InternalEventReader`.
 /// This needs to be static because there can be one event reader.
+#[cfg(not(target_arch = "wasm32"))]
 static INTERNAL_EVENT_READER: Mutex<Option<InternalEventReader>> = parking_lot::const_mutex(None);
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn lock_internal_event_reader() -> MappedMutexGuard<'static, InternalEventReader> {
     MutexGuard::map(INTERNAL_EVENT_READER.lock(), |reader| {
         reader.get_or_insert_with(InternalEventReader::default)
     })
 }
+
+#[cfg(not(target_arch = "wasm32"))]
 fn try_lock_internal_event_reader_for(
     duration: Duration,
 ) -> Option<MappedMutexGuard<'static, InternalEventReader>> {
@@ -199,6 +207,7 @@ fn try_lock_internal_event_reader_for(
 ///     poll(Duration::from_millis(100))
 /// }
 /// ```
+#[cfg(not(target_arch = "wasm32"))]
 pub fn poll(timeout: Duration) -> std::io::Result<bool> {
     poll_internal(Some(timeout), &EventFilter)
 }
@@ -244,15 +253,17 @@ pub fn poll(timeout: Duration) -> std::io::Result<bool> {
 ///     }
 /// }
 /// ```
+#[cfg(not(target_arch = "wasm32"))]
 pub fn read() -> std::io::Result<Event> {
     match read_internal(&EventFilter)? {
         InternalEvent::Event(event) => Ok(event),
-        #[cfg(unix)]
+        #[cfg(any(unix, target_arch = "wasm32"))]
         _ => unreachable!(),
     }
 }
 
 /// Polls to check if there are any `InternalEvent`s that can be read within the given duration.
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn poll_internal<F>(timeout: Option<Duration>, filter: &F) -> std::io::Result<bool>
 where
     F: Filter,
@@ -271,6 +282,7 @@ where
 }
 
 /// Reads a single `InternalEvent`.
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn read_internal<F>(filter: &F) -> std::io::Result<InternalEvent>
 where
     F: Filter,
@@ -339,7 +351,7 @@ impl Command for EnableMouseCapture {
 
     #[cfg(windows)]
     fn is_ansi_code_supported(&self) -> bool {
-        false
+        crate::ansi_support::is_ansi_forced()
     }
 }
 
@@ -368,7 +380,7 @@ impl Command for DisableMouseCapture {
 
     #[cfg(windows)]
     fn is_ansi_code_supported(&self) -> bool {
-        false
+        crate::ansi_support::is_ansi_forced()
     }
 }
 
@@ -507,7 +519,7 @@ impl Command for PushKeyboardEnhancementFlags {
 
     #[cfg(windows)]
     fn is_ansi_code_supported(&self) -> bool {
-        false
+        crate::ansi_support::is_ansi_forced()
     }
 }
 
@@ -536,7 +548,7 @@ impl Command for PopKeyboardEnhancementFlags {
 
     #[cfg(windows)]
     fn is_ansi_code_supported(&self) -> bool {
-        false
+        crate::ansi_support::is_ansi_forced()
     }
 }
 
@@ -1175,13 +1187,13 @@ pub(crate) enum InternalEvent {
     /// An event.
     Event(Event),
     /// A cursor position (`col`, `row`).
-    #[cfg(unix)]
+    #[cfg(any(unix, target_arch = "wasm32"))]
     CursorPosition(u16, u16),
     /// The progressive keyboard enhancement flags enabled by the terminal.
-    #[cfg(unix)]
+    #[cfg(any(unix, target_arch = "wasm32"))]
     KeyboardEnhancementFlags(KeyboardEnhancementFlags),
     /// Attributes and architectural class of the terminal.
-    #[cfg(unix)]
+    #[cfg(any(unix, target_arch = "wasm32"))]
     PrimaryDeviceAttributes,
 }
 

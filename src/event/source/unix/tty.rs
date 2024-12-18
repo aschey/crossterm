@@ -189,6 +189,7 @@ impl EventSource for UnixInternalEventSource {
                 let fd = FileDesc::new(self.wake_pipe.receiver.as_raw_fd(), false);
                 #[cfg(not(feature = "libc"))]
                 let fd = FileDesc::Borrowed(self.wake_pipe.receiver.as_fd());
+
                 // drain the pipe
                 while read_complete(&fd, &mut [0; 1024])? != 0 {}
 
