@@ -74,10 +74,22 @@ pub(crate) fn parse_event(
                         }
                     }
                     b'[' => parse_csi(buffer),
-                    b'\x1B' => Ok(Some(InternalEvent::Event(Event::Key(KeyEvent::new(
-                        KeyCode::Esc,
-                        KeyModifiers::ALT,
-                    ))))),
+                    b'\x1B' => {
+                        if buffer.len() == 2 {
+                            Ok(Some(InternalEvent::Event(Event::Key(KeyEvent::new(
+                                KeyCode::Esc,
+                                KeyModifiers::ALT,
+                            )))))
+                        } else {
+                            match &buffer[2..] {
+                                b"[Z" => Ok(Some(InternalEvent::Event(Event::Key(KeyEvent::new(
+                                    KeyCode::BackTab,
+                                    KeyModifiers::SHIFT | KeyModifiers::ALT,
+                                ))))),
+                                _ => Err(could_not_parse_event_error()),
+                            }
+                        }
+                    }
                     _ => parse_event(&buffer[1..], input_available).map(|event_option| {
                         event_option.map(|event| {
                             if let InternalEvent::Event(Event::Key(key_event)) = event {
