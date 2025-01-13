@@ -191,6 +191,7 @@ pub(crate) fn parse_csi(buffer: &[u8]) -> io::Result<Option<InternalEvent>> {
         // https://sw.kovidgoyal.net/kitty/keyboard-protocol/#legacy-functional-keys
         b'P' => Some(Event::Key(KeyCode::F(1).into())),
         b'Q' => Some(Event::Key(KeyCode::F(2).into())),
+        b'R' => Some(Event::Key(KeyCode::F(3).into())),
         b'S' => Some(Event::Key(KeyCode::F(4).into())),
         b'?' => match buffer[buffer.len() - 1] {
             b'u' => return parse_csi_keyboard_enhancement_flags(buffer),
