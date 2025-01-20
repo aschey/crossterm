@@ -1,6 +1,6 @@
-use std::time::Duration;
-
+use crate::event::source::ParseOptions;
 use crossterm_winapi::{Console, Handle, InputRecord};
+use std::time::Duration;
 
 use crate::event::{
     sys::windows::{parse::MouseButtonsPressed, poll::WinApiPoll},
@@ -41,7 +41,11 @@ impl WindowsEventSource {
 }
 
 impl EventSource for WindowsEventSource {
-    fn try_read(&mut self, timeout: Option<Duration>) -> std::io::Result<Option<InternalEvent>> {
+    fn try_read(
+        &mut self,
+        timeout: Option<Duration>,
+        _options: &ParseOptions,
+    ) -> std::io::Result<Option<InternalEvent>> {
         let poll_timeout = PollTimeout::new(timeout);
 
         loop {

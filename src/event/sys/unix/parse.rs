@@ -1,8 +1,9 @@
 use std::io;
 
 use crate::event::{
-    Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers, KeyboardEnhancementFlags,
-    MediaKeyCode, ModifierKeyCode, MouseButton, MouseEvent, MouseEventKind,
+    source::ParseOptions, Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers,
+    KeyboardEnhancementFlags, MediaKeyCode, ModifierKeyCode, MouseButton, MouseEvent,
+    MouseEventKind,
 };
 
 use super::super::super::InternalEvent;
@@ -26,6 +27,7 @@ fn could_not_parse_event_error() -> io::Error {
 pub(crate) fn parse_event(
     buffer: &[u8],
     input_available: bool,
+    options: &ParseOptions,
 ) -> io::Result<Option<InternalEvent>> {
     if buffer.is_empty() {
         return Ok(None);
@@ -73,9 +75,9 @@ pub(crate) fn parse_event(
                             }
                         }
                     }
-                    b'[' => parse_csi(buffer),
+                    b'[' => parse_csi(buffer, options),
                     b'\x1B' => Ok(Some(InternalEvent::Event(Event::Key(KeyCode::Esc.into())))),
-                    _ => parse_event(&buffer[1..], input_available).map(|event_option| {
+                    _ => parse_event(&buffer[1..], input_available, options).map(|event_option| {
                         event_option.map(|event| {
                             if let InternalEvent::Event(Event::Key(key_event)) = event {
                                 let mut alt_key_event = key_event;
@@ -134,7 +136,10 @@ fn char_code_to_event(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, modifiers)
 }
 
-pub(crate) fn parse_csi(buffer: &[u8]) -> io::Result<Option<InternalEvent>> {
+pub(crate) fn parse_csi(
+    buffer: &[u8],
+    options: &ParseOptions,
+) -> io::Result<Option<InternalEvent>> {
     assert!(buffer.starts_with(b"\x1B[")); // ESC [
 
     if buffer.len() == 2 {
@@ -201,7 +206,9 @@ pub(crate) fn parse_csi(buffer: &[u8]) -> io::Result<Option<InternalEvent>> {
                         b'M' => return parse_csi_rxvt_mouse(buffer),
                         b'~' => return parse_csi_special_key_code(buffer),
                         b'u' => return parse_csi_u_encoded_key_code(buffer),
-                        b'R' => return parse_csi_cursor_position(buffer),
+                        b'R' if options.reading_cursor_position => {
+                            return parse_csi_cursor_position(buffer)
+                        }
                         _ => return parse_csi_modifier_key_code(buffer),
                     }
                 }
@@ -870,20 +877,23 @@ mod tests {
     #[test]
     fn test_esc_key() {
         assert_eq!(
-            parse_event(b"\x1B", false).unwrap(),
+            parse_event(b"\x1B", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyCode::Esc.into()))),
         );
     }
 
     #[test]
     fn test_possible_esc_sequence() {
-        assert_eq!(parse_event(b"\x1B", true).unwrap(), None,);
+        assert_eq!(
+            parse_event(b"\x1B", true, &ParseOptions::default()).unwrap(),
+            None,
+        );
     }
 
     #[test]
     fn test_alt_key() {
         assert_eq!(
-            parse_event(b"\x1Bc", false).unwrap(),
+            parse_event(b"\x1Bc", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new(
                 KeyCode::Char('c'),
                 KeyModifiers::ALT
@@ -894,7 +904,7 @@ mod tests {
     #[test]
     fn test_alt_shift() {
         assert_eq!(
-            parse_event(b"\x1BH", false).unwrap(),
+            parse_event(b"\x1BH", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new(
                 KeyCode::Char('H'),
                 KeyModifiers::ALT | KeyModifiers::SHIFT
@@ -905,7 +915,7 @@ mod tests {
     #[test]
     fn test_alt_ctrl() {
         assert_eq!(
-            parse_event(b"\x1B\x14", false).unwrap(),
+            parse_event(b"\x1B\x14", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new(
                 KeyCode::Char('t'),
                 KeyModifiers::ALT | KeyModifiers::CONTROL
@@ -920,19 +930,34 @@ mod tests {
 
         // parse_csi_cursor_position
         assert_eq!(
-            parse_event(b"\x1B[20;10R", false).unwrap(),
+            parse_event(
+                b"\x1B[20;10R",
+                false,
+                &ParseOptions {
+                    reading_cursor_position: true
+                }
+            )
+            .unwrap(),
             Some(InternalEvent::CursorPosition(9, 19))
+        );
+
+        assert_eq!(
+            parse_event(b"\x1B[1;5R", false, &ParseOptions::default()).unwrap(),
+            Some(InternalEvent::Event(Event::Key(KeyEvent::new(
+                KeyCode::F(3),
+                KeyModifiers::CONTROL
+            ))))
         );
 
         // parse_csi
         assert_eq!(
-            parse_event(b"\x1B[D", false).unwrap(),
+            parse_event(b"\x1B[D", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyCode::Left.into()))),
         );
 
         // parse_csi_modifier_key_code
         assert_eq!(
-            parse_event(b"\x1B[2D", false).unwrap(),
+            parse_event(b"\x1B[2D", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new(
                 KeyCode::Left,
                 KeyModifiers::SHIFT
@@ -941,14 +966,19 @@ mod tests {
 
         // parse_csi_special_key_code
         assert_eq!(
-            parse_event(b"\x1B[3~", false).unwrap(),
+            parse_event(b"\x1B[3~", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyCode::Delete.into()))),
         );
 
         // parse_csi_bracketed_paste
         #[cfg(feature = "bracketed-paste")]
         assert_eq!(
-            parse_event(b"\x1B[200~on and on and on\x1B[201~", false).unwrap(),
+            parse_event(
+                b"\x1B[200~on and on and on\x1B[201~",
+                false,
+                &ParseOptions::default()
+            )
+            .unwrap(),
             Some(InternalEvent::Event(Event::Paste(
                 "on and on and on".to_string()
             ))),
@@ -956,7 +986,7 @@ mod tests {
 
         // parse_csi_rxvt_mouse
         assert_eq!(
-            parse_event(b"\x1B[32;30;40;M", false).unwrap(),
+            parse_event(b"\x1B[32;30;40;M", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Mouse(MouseEvent {
                 kind: MouseEventKind::Down(MouseButton::Left),
                 column: 29,
@@ -967,7 +997,7 @@ mod tests {
 
         // parse_csi_normal_mouse
         assert_eq!(
-            parse_event(b"\x1B[M0\x60\x70", false).unwrap(),
+            parse_event(b"\x1B[M0\x60\x70", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Mouse(MouseEvent {
                 kind: MouseEventKind::Down(MouseButton::Left),
                 column: 63,
@@ -978,7 +1008,7 @@ mod tests {
 
         // parse_csi_sgr_mouse
         assert_eq!(
-            parse_event(b"\x1B[<0;20;10;M", false).unwrap(),
+            parse_event(b"\x1B[<0;20;10;M", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Mouse(MouseEvent {
                 kind: MouseEventKind::Down(MouseButton::Left),
                 column: 19,
@@ -989,7 +1019,7 @@ mod tests {
 
         // parse_utf8_char
         assert_eq!(
-            parse_event("Ž".as_bytes(), false).unwrap(),
+            parse_event("Ž".as_bytes(), false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new(
                 KeyCode::Char('Ž'),
                 KeyModifiers::SHIFT
@@ -1000,7 +1030,7 @@ mod tests {
     #[test]
     fn test_parse_event() {
         assert_eq!(
-            parse_event(b"\t", false).unwrap(),
+            parse_event(b"\t", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyCode::Tab.into()))),
         );
     }
@@ -1016,7 +1046,7 @@ mod tests {
     #[test]
     fn test_parse_csi() {
         assert_eq!(
-            parse_csi(b"\x1B[D").unwrap(),
+            parse_csi(b"\x1B[D", &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyCode::Left.into()))),
         );
     }
@@ -1056,17 +1086,22 @@ mod tests {
     fn test_parse_csi_bracketed_paste() {
         //
         assert_eq!(
-            parse_event(b"\x1B[200~o", false).unwrap(),
+            parse_event(b"\x1B[200~o", false, &ParseOptions::default()).unwrap(),
             None,
             "A partial bracketed paste isn't parsed"
         );
         assert_eq!(
-            parse_event(b"\x1B[200~o\x1B[2D", false).unwrap(),
+            parse_event(b"\x1B[200~o\x1B[2D", false, &ParseOptions::default()).unwrap(),
             None,
             "A partial bracketed paste containing another escape code isn't parsed"
         );
         assert_eq!(
-            parse_event(b"\x1B[200~o\x1B[2D\x1B[201~", false).unwrap(),
+            parse_event(
+                b"\x1B[200~o\x1B[2D\x1B[201~",
+                false,
+                &ParseOptions::default()
+            )
+            .unwrap(),
             Some(InternalEvent::Event(Event::Paste("o\x1B[2D".to_string())))
         );
     }
@@ -1074,7 +1109,7 @@ mod tests {
     #[test]
     fn test_parse_csi_focus() {
         assert_eq!(
-            parse_csi(b"\x1B[O").unwrap(),
+            parse_csi(b"\x1B[O", &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::FocusLost))
         );
     }
@@ -1192,7 +1227,7 @@ mod tests {
     #[test]
     fn test_parse_char_event_lowercase() {
         assert_eq!(
-            parse_event(b"c", false).unwrap(),
+            parse_event(b"c", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new(
                 KeyCode::Char('c'),
                 KeyModifiers::empty()
@@ -1203,7 +1238,7 @@ mod tests {
     #[test]
     fn test_parse_char_event_uppercase() {
         assert_eq!(
-            parse_event(b"C", false).unwrap(),
+            parse_event(b"C", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new(
                 KeyCode::Char('C'),
                 KeyModifiers::SHIFT
@@ -1448,7 +1483,7 @@ mod tests {
     fn test_parse_csi_u_with_shifted_keycode() {
         assert_eq!(
             // A-S-9 is equivalent to A-(
-            parse_event(b"\x1B[57:40;4u", false).unwrap(),
+            parse_event(b"\x1B[57:40;4u", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new(
                 KeyCode::Char('('),
                 KeyModifiers::ALT,
@@ -1456,7 +1491,7 @@ mod tests {
         );
         assert_eq!(
             // A-S-minus is equivalent to A-_
-            parse_event(b"\x1B[45:95;4u", false).unwrap(),
+            parse_event(b"\x1B[45:95;4u", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new(
                 KeyCode::Char('_'),
                 KeyModifiers::ALT,
@@ -1467,7 +1502,7 @@ mod tests {
     #[test]
     fn test_parse_csi_special_key_code_with_types() {
         assert_eq!(
-            parse_event(b"\x1B[;1:3B", false).unwrap(),
+            parse_event(b"\x1B[;1:3B", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new_with_kind(
                 KeyCode::Down,
                 KeyModifiers::empty(),
@@ -1475,7 +1510,7 @@ mod tests {
             )))),
         );
         assert_eq!(
-            parse_event(b"\x1B[1;1:3B", false).unwrap(),
+            parse_event(b"\x1B[1;1:3B", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new_with_kind(
                 KeyCode::Down,
                 KeyModifiers::empty(),
@@ -1487,7 +1522,7 @@ mod tests {
     #[test]
     fn test_parse_csi_numbered_escape_code_with_types() {
         assert_eq!(
-            parse_event(b"\x1B[5;1:3~", false).unwrap(),
+            parse_event(b"\x1B[5;1:3~", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new_with_kind(
                 KeyCode::PageUp,
                 KeyModifiers::empty(),
@@ -1495,7 +1530,7 @@ mod tests {
             )))),
         );
         assert_eq!(
-            parse_event(b"\x1B[6;5:3~", false).unwrap(),
+            parse_event(b"\x1B[6;5:3~", false, &ParseOptions::default()).unwrap(),
             Some(InternalEvent::Event(Event::Key(KeyEvent::new_with_kind(
                 KeyCode::PageDown,
                 KeyModifiers::CONTROL,

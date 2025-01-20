@@ -1,7 +1,7 @@
-use std::{collections::VecDeque, io, time::Duration};
-
+use crate::event::source::ParseOptions;
 use mio::{unix::SourceFd, Events, Interest, Poll, Token};
 use signal_hook_mio::v1_0::Signals;
+use std::{collections::VecDeque, io, time::Duration};
 
 #[cfg(feature = "event-stream")]
 use crate::event::sys::Waker;
@@ -65,7 +65,11 @@ impl UnixInternalEventSource {
 }
 
 impl EventSource for UnixInternalEventSource {
-    fn try_read(&mut self, timeout: Option<Duration>) -> io::Result<Option<InternalEvent>> {
+    fn try_read(
+        &mut self,
+        timeout: Option<Duration>,
+        options: &ParseOptions,
+    ) -> io::Result<Option<InternalEvent>> {
         if let Some(event) = self.parser.next() {
             return Ok(Some(event));
         }
@@ -99,6 +103,7 @@ impl EventSource for UnixInternalEventSource {
                                         self.parser.advance(
                                             &self.tty_buffer[..read_count],
                                             read_count == TTY_BUFFER_SIZE,
+                                            options,
                                         );
                                     }
                                 }
@@ -195,13 +200,13 @@ impl Default for Parser {
 }
 
 impl Parser {
-    fn advance(&mut self, buffer: &[u8], more: bool) {
+    fn advance(&mut self, buffer: &[u8], more: bool, options: &ParseOptions) {
         for (idx, byte) in buffer.iter().enumerate() {
             let more = idx + 1 < buffer.len() || more;
 
             self.buffer.push(*byte);
 
-            match parse_event(&self.buffer, more) {
+            match parse_event(&self.buffer, more, options) {
                 Ok(Some(ie)) => {
                     self.internal_events.push_back(ie);
                     self.buffer.clear();
