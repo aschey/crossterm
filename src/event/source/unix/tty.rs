@@ -7,6 +7,7 @@ use rustix::fd::{AsFd, AsRawFd};
 
 use signal_hook::low_level::pipe;
 
+use crate::event::source::ParseOptions;
 use crate::event::timeout::PollTimeout;
 use crate::event::Event;
 use filedescriptor::{poll, pollfd, POLLIN};
@@ -99,7 +100,11 @@ fn read_complete(fd: &FileDesc, buf: &mut [u8]) -> io::Result<usize> {
 }
 
 impl EventSource for UnixInternalEventSource {
-    fn try_read(&mut self, timeout: Option<Duration>) -> io::Result<Option<InternalEvent>> {
+    fn try_read(
+        &mut self,
+        timeout: Option<Duration>,
+        options: &ParseOptions,
+    ) -> io::Result<Option<InternalEvent>> {
         let timeout = PollTimeout::new(timeout);
 
         fn make_pollfd<F: AsRawFd>(fd: &F) -> pollfd {
@@ -151,6 +156,7 @@ impl EventSource for UnixInternalEventSource {
                         self.parser.advance(
                             &self.tty_buffer[..read_count],
                             read_count == TTY_BUFFER_SIZE,
+                            options,
                         );
                     }
 
@@ -245,13 +251,13 @@ impl Default for Parser {
 }
 
 impl Parser {
-    fn advance(&mut self, buffer: &[u8], more: bool) {
+    fn advance(&mut self, buffer: &[u8], more: bool, options: &ParseOptions) {
         for (idx, byte) in buffer.iter().enumerate() {
             let more = idx + 1 < buffer.len() || more;
 
             self.buffer.push(*byte);
 
-            match parse_event(&self.buffer, more) {
+            match parse_event(&self.buffer, more, &options) {
                 Ok(Some(ie)) => {
                     self.internal_events.push_back(ie);
                     self.buffer.clear();

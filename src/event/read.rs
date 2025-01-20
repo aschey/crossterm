@@ -67,24 +67,25 @@ impl InternalEventReader {
         let poll_timeout = PollTimeout::new(timeout);
 
         loop {
-            let maybe_event = match event_source.try_read(poll_timeout.leftover()) {
-                Ok(None) => None,
-                Ok(Some(event)) => {
-                    if filter.eval(&event) {
-                        Some(event)
-                    } else {
-                        self.skipped_events.push(event);
-                        None
+            let maybe_event =
+                match event_source.try_read(poll_timeout.leftover(), &filter.options()) {
+                    Ok(None) => None,
+                    Ok(Some(event)) => {
+                        if filter.eval(&event) {
+                            Some(event)
+                        } else {
+                            self.skipped_events.push(event);
+                            None
+                        }
                     }
-                }
-                Err(e) => {
-                    if e.kind() == io::ErrorKind::Interrupted {
-                        return Ok(false);
-                    }
+                    Err(e) => {
+                        if e.kind() == io::ErrorKind::Interrupted {
+                            return Ok(false);
+                        }
 
-                    return Err(e);
-                }
-            };
+                        return Err(e);
+                    }
+                };
 
             if poll_timeout.elapsed() || maybe_event.is_some() {
                 self.events.extend(self.skipped_events.drain(..));
@@ -134,6 +135,8 @@ impl InternalEventReader {
 mod tests {
     use std::io;
     use std::{collections::VecDeque, time::Duration};
+
+    use crate::event::source::ParseOptions;
 
     #[cfg(unix)]
     use super::super::filter::CursorPositionFilter;
@@ -411,7 +414,11 @@ mod tests {
     }
 
     impl EventSource for FakeSource {
-        fn try_read(&mut self, _timeout: Option<Duration>) -> io::Result<Option<InternalEvent>> {
+        fn try_read(
+            &mut self,
+            _timeout: Option<Duration>,
+            _options: &ParseOptions,
+        ) -> io::Result<Option<InternalEvent>> {
             // Return error if set in case there's just one remaining event
             if self.events.len() == 1 {
                 if let Some(error) = self.error.take() {

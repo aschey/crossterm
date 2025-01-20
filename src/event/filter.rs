@@ -1,9 +1,14 @@
 use crate::event::InternalEvent;
 
+use super::source::ParseOptions;
+
 /// Interface for filtering an `InternalEvent`.
 pub(crate) trait Filter: Send + Sync + 'static {
     /// Returns whether the given event fulfills the filter.
     fn eval(&self, event: &InternalEvent) -> bool;
+    fn options(&self) -> ParseOptions {
+        ParseOptions::default()
+    }
 }
 
 #[cfg(any(unix, target_arch = "wasm32"))]
@@ -14,6 +19,12 @@ pub(crate) struct CursorPositionFilter;
 impl Filter for CursorPositionFilter {
     fn eval(&self, event: &InternalEvent) -> bool {
         matches!(*event, InternalEvent::CursorPosition(_, _))
+    }
+
+    fn options(&self) -> ParseOptions {
+        ParseOptions {
+            reading_cursor_position: true,
+        }
     }
 }
 
