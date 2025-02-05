@@ -1,17 +1,14 @@
-use std::io;
+use std::{fs::File, io};
 
+use crate::tty::IsTty;
 #[cfg(feature = "libc")]
 use libc::size_t;
 #[cfg(not(feature = "libc"))]
 use rustix::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd, RawFd};
 #[cfg(feature = "libc")]
 use std::{
-    fs,
     marker::PhantomData,
-    os::unix::{
-        io::{IntoRawFd, RawFd},
-        prelude::AsRawFd,
-    },
+    os::unix::{io::RawFd, prelude::AsRawFd},
 };
 
 /// A file descriptor wrapper.
@@ -147,14 +144,12 @@ impl AsFd for FileDesc<'_> {
 #[cfg(feature = "libc")]
 /// Creates a file descriptor pointing to the standard input or `/dev/tty`.
 pub fn tty_fd_in() -> io::Result<FileDesc<'static>> {
-    let (fd, close_on_drop) = if let Ok(file) = fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open("/dev/tty")
-    {
-        (file.into_raw_fd(), true)
-    } else {
+    use std::os::fd::IntoRawFd;
+
+    let (fd, close_on_drop) = if libc::STDIN_FILENO.is_tty() {
         (libc::STDIN_FILENO, false)
+    } else {
+        (open_dev_tty()?.into_raw_fd(), true)
     };
     Ok(FileDesc::new(fd, close_on_drop))
 }
@@ -162,14 +157,12 @@ pub fn tty_fd_in() -> io::Result<FileDesc<'static>> {
 #[cfg(feature = "libc")]
 /// Creates a file descriptor pointing to the standard output or `/dev/tty`.
 pub fn tty_fd_out() -> io::Result<FileDesc<'static>> {
-    let (fd, close_on_drop) = if let Ok(file) = fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open("/dev/tty")
-    {
-        (file.into_raw_fd(), true)
-    } else {
+    use std::os::fd::IntoRawFd;
+
+    let (fd, close_on_drop) = if libc::STDOUT_FILENO.is_tty() {
         (libc::STDOUT_FILENO, false)
+    } else {
+        (open_dev_tty()?.into_raw_fd(), true)
     };
     Ok(FileDesc::new(fd, close_on_drop))
 }
@@ -177,37 +170,29 @@ pub fn tty_fd_out() -> io::Result<FileDesc<'static>> {
 #[cfg(not(feature = "libc"))]
 /// Creates a file descriptor pointing to the standard input or `/dev/tty`.
 pub fn tty_fd_in() -> io::Result<FileDesc<'static>> {
-    use std::fs::File;
-
-    let file = File::options()
-        .read(true)
-        .write(true)
-        .open("/dev/tty")
-        .map(|file| (FileDesc::Owned(file.into())));
-    let fd = if let Ok(file) = file {
-        file
+    let stdin = rustix::stdio::stdin();
+    let fd = if stdin.is_tty() {
+        FileDesc::Borrowed(stdin)
     } else {
-        // Fallback to stdin if /dev/tty is missing
-        FileDesc::Borrowed(rustix::stdio::stdin())
+        open_dev_tty().map(|file| (FileDesc::Owned(file.into())))?
     };
+
     Ok(fd)
 }
 
 #[cfg(not(feature = "libc"))]
 /// Creates a file descriptor pointing to the standard output or `/dev/tty`.
 pub fn tty_fd_out() -> io::Result<FileDesc<'static>> {
-    use std::fs::File;
-
-    let file = File::options()
-        .read(true)
-        .write(true)
-        .open("/dev/tty")
-        .map(|file| (FileDesc::Owned(file.into())));
-    let fd = if let Ok(file) = file {
-        file
+    let stdout = rustix::stdio::stdout();
+    let fd = if stdout.is_tty() {
+        FileDesc::Borrowed(stdout)
     } else {
-        // Fallback to stdout if /dev/tty is missing
-        FileDesc::Borrowed(rustix::stdio::stdout())
+        open_dev_tty().map(|file| (FileDesc::Owned(file.into())))?
     };
+
     Ok(fd)
+}
+
+fn open_dev_tty() -> io::Result<File> {
+    File::options().read(true).write(true).open("/dev/tty")
 }

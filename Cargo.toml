@@ -46,6 +46,7 @@ use-dev-tty = ["filedescriptor", "rustix/process"]
 
 [dependencies]
 bitflags = { version = "2.3" }
+derive_more = { version = "1.0.0", features = ["is_variant"] }
 document-features = "0.2.10"
 futures-core = { version = "0.3", optional = true, default-features = false }
 parking_lot = "0.12"
@@ -66,11 +67,10 @@ filedescriptor = { version = "0.8", optional = true }
 # compatibility.
 libc = { version = "0.2", default-features = false, optional = true }
 mio = { version = "1.0", features = ["os-poll"], optional = true }
-rustix = { version = "0.38.34", default-features = false, features = [
+rustix = { version = "0.38.36", default-features = false, features = [
     "std",
     "stdio",
     "termios",
-    "process",
 ] }
 signal-hook = { version = "0.3.17", optional = true }
 signal-hook-mio = { version = "0.2.4", features = [
