@@ -128,7 +128,7 @@ pub(crate) mod sys;
 pub(crate) mod timeout;
 
 use derive_more::derive::IsVariant;
-#[cfg(feature = "event-stream")]
+#[cfg(all(feature = "event-stream", not(target_arch = "wasm32")))]
 pub use stream::EventStream;
 
 #[cfg(not(target_arch = "wasm32"))]
