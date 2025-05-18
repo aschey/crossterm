@@ -10,15 +10,15 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-2019, macOS-latest]
-  steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
-    - name: Install Rust
-      uses: hecrj/setup-rust-action@master
-      with:
-        rust-version: rust
-    - name: check
-      run: cargo run --example=is_tty
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Install Rust
+        uses: hecrj/setup-rust-action@master
+        with:
+          rust-version: rust
+      - name: check
+        run: cargo run --example=is_tty
 
