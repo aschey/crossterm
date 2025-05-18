@@ -5,7 +5,7 @@ on:
 
 jobs:
   test:
-    name: ${{matrix.rust}} on ${{ matrix.os }}
+    name: test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
