@@ -1,0 +1,24 @@
+name: tty test
+
+on:
+  push:
+
+jobs:
+  test:
+    name: ${{matrix.rust}} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-2019, macOS-latest]
+  steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - name: Install Rust
+      uses: hecrj/setup-rust-action@master
+      with:
+        rust-version: rust
+    - name: check
+      run: cargo run --example=is_tty
+
