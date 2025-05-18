@@ -6,6 +6,7 @@ use crossterm::{
 use std::io::{stdin, stdout};
 
 pub fn main() {
+    println!("{}", stdout().is_tty());
     println!("size: {:?}", size().unwrap());
     execute!(stdout(), SetSize(10, 10)).unwrap();
     println!("resized: {:?}", size().unwrap());
