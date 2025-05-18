@@ -18,7 +18,7 @@ jobs:
       - name: Install Rust
         uses: hecrj/setup-rust-action@master
         with:
-          rust-version: rust
+          rust-version: stable 
       - name: check
         run: cargo run --example=is_tty
 
